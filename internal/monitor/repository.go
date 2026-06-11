@@ -24,7 +24,7 @@ type MonitorRepo struct {
 	logger *zap.Logger
 }
 
-func NewMonitorRepository(db *sql.DB, logger *zap.Logger) MonitorRepository {
+func NewMonitorRepository(db *sql.DB, logger *zap.Logger) *MonitorRepo {
 	return &MonitorRepo{db: db, logger: logger}
 }
 

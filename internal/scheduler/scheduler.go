@@ -2,7 +2,6 @@ package scheduler
 
 import (
 	"StatusGuard/internal/checker"
-	"StatusGuard/internal/incident"
 	"StatusGuard/internal/monitor"
 	"context"
 	"sync"
@@ -26,7 +25,7 @@ type IncidentService interface {
 type Scheduler struct {
 	targetProvider TargetProvider
 	checker        Checker
-	incident       *incident.Service
+	incident       IncidentService
 
 	interval time.Duration
 	workers  int
@@ -37,10 +36,10 @@ type Scheduler struct {
 func NewScheduler(
 	targetProvider TargetProvider,
 	checker Checker,
-	incident *incident.Service,
+	incident IncidentService,
 	interval time.Duration,
 	workers int,
-	logger zap.Logger,
+	logger *zap.Logger,
 ) *Scheduler {
 	if workers <= 0 {
 		workers = 1
@@ -52,7 +51,7 @@ func NewScheduler(
 		incident:       incident,
 		interval:       interval,
 		workers:        workers,
-		logger:         &logger,
+		logger:         logger,
 	}
 }
 

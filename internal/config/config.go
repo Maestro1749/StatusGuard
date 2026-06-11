@@ -9,22 +9,24 @@ import (
 )
 
 type Config struct {
-	TelegramBotToken string
-	TelegramChatID   string
-	CheckerWorkers   int
-	AppPort          int
-	DatabaseURL      string
+	TelegramBotToken         string
+	TelegramChatID           string
+	CheckerWorkers           int
+	SchedulerIntervalSeconds int
+	AppPort                  int
+	DatabaseURL              string
 }
 
 func MustLoad() *Config {
 	_ = godotenv.Load()
 
 	cfg := &Config{
-		TelegramBotToken: os.Getenv("TELEGRAM_BOT_TOKEN"),
-		TelegramChatID:   os.Getenv("TELEGRAM_CHAT_ID"),
-		CheckerWorkers:   getEnvAsInt("CHECKER_WORKERS", 5),
-		AppPort:          getEnvAsInt("APP_PORT", 8080),
-		DatabaseURL:      getEnvRequired("DATABASE_URL"),
+		TelegramBotToken:         os.Getenv("TELEGRAM_BOT_TOKEN"),
+		TelegramChatID:           os.Getenv("TELEGRAM_CHAT_ID"),
+		CheckerWorkers:           getEnvAsInt("CHECKER_WORKERS", 5),
+		SchedulerIntervalSeconds: getEnvAsInt("SCHEDULER_INTERVAL_SECONDS", 5),
+		AppPort:                  getEnvAsInt("APP_PORT", 8080),
+		DatabaseURL:              getEnvRequired("DATABASE_URL"),
 	}
 
 	return cfg

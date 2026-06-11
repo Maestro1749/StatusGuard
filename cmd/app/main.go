@@ -62,9 +62,9 @@ func main() {
 		monitorRepo,
 		checkerService,
 		incidentService,
-		30*time.Second,
+		time.Duration(cfg.SchedulerIntervalSeconds)*time.Second,
 		cfg.CheckerWorkers,
-		*logger,
+		logger,
 	)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
