@@ -1,0 +1,4 @@
+DROP TABLE IF EXISTS settings;
+DROP TABLE IF EXISTS incidents;
+DROP TABLE IF EXISTS check_result;
+DROP TABLE IF EXISTS targets;

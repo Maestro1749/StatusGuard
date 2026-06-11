@@ -1,0 +1,119 @@
+package main
+
+import (
+	"StatusGuard/internal/checker"
+	"StatusGuard/internal/config"
+	"StatusGuard/internal/incident"
+	"StatusGuard/internal/logger"
+	"StatusGuard/internal/monitor"
+	"StatusGuard/internal/notification"
+	"StatusGuard/internal/scheduler"
+	"StatusGuard/internal/transport"
+	"context"
+	"database/sql"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"strconv"
+	"syscall"
+	"time"
+
+	_ "github.com/lib/pq"
+
+	"github.com/gorilla/mux"
+	"go.uber.org/zap"
+)
+
+func main() {
+	cfg := config.MustLoad()
+
+	// logger init
+	logger, err := logger.NewLogger()
+	if err != nil {
+		log.Fatal("failed to initialize logger", err)
+	}
+
+	// database open
+	db, err := sql.Open("postgres", cfg.DatabaseURL)
+	if err != nil {
+		logger.Error("failed to open database connection", zap.Error(err))
+		panic(err)
+	}
+
+	if err := db.Ping(); err != nil {
+		logger.Error("failed to connect to the database", zap.Error(err))
+		panic(err)
+	}
+
+	// repositories
+	monitorRepo := monitor.NewMonitorRepository(db, logger)
+	checkerRepo := checker.NewCheckerRepository(db, logger)
+	incidentRepo := incident.NewRepository(db, logger)
+
+	notifier := notification.NewNoopNotifier()
+
+	// services
+	monitorService := monitor.NewMonitorService(monitorRepo, logger)
+	checkerService := checker.NewCheckerService(monitorRepo, checkerRepo, logger)
+	incidentService := incident.NewService(incidentRepo, notifier, logger)
+
+	scheduler := scheduler.NewScheduler(
+		monitorRepo,
+		checkerService,
+		incidentService,
+		30*time.Second,
+		cfg.CheckerWorkers,
+		*logger,
+	)
+
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	go scheduler.Start(ctx)
+
+	// handlers
+	monitorHandlers := transport.NewMonitorHandler(logger, monitorService)
+	checkerHandler := transport.NewCheckerHandler(checkerService, logger)
+
+	router := mux.NewRouter()
+
+	// routes
+	router.Path("/targets").Methods("POST").HandlerFunc(monitorHandlers.CreateTarget)
+	router.Path("/targets/{id}").Methods("DELETE").HandlerFunc(monitorHandlers.DeleteTarget)
+	router.Path("/targets/{id}").Methods("GET").HandlerFunc(monitorHandlers.GetTarget)
+	router.Path("/targets").Methods("GET").HandlerFunc(monitorHandlers.GetAllTargets)
+	router.Path("/targets/{id}").Methods("PATCH").HandlerFunc(monitorHandlers.UpdateTarget)
+
+	router.Path("/targets/{id}/check").Methods("POST").HandlerFunc(checkerHandler.CheckTarget)
+
+	// graceful shut down
+	srv := &http.Server{
+		Addr:              ":" + strconv.Itoa(cfg.AppPort),
+		Handler:           router,
+		ReadHeaderTimeout: 3 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Error("failed to start http server", zap.Error(err))
+			panic(err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	<-quit
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(ctx); err != nil {
+		logger.Error("server was forced to shutdown")
+		panic(err)
+	}
+}
