@@ -3,6 +3,7 @@ package checker
 import (
 	"StatusGuard/internal/monitor"
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -98,8 +99,12 @@ func (s *CheckerService) check(ctx context.Context, target *monitor.Target) Resu
 	httpStatus := resp.StatusCode
 
 	status := StatusUp
+	var errMsg *string
+
 	if resp.StatusCode != target.ExpectedStatus {
 		status = StatusDown
+		msg := fmt.Sprintf("expected status %d, got %d", target.ExpectedStatus, resp.StatusCode)
+		errMsg = &msg
 	}
 
 	return Result{
@@ -107,6 +112,7 @@ func (s *CheckerService) check(ctx context.Context, target *monitor.Target) Resu
 		Status:         status,
 		HTTPStatus:     &httpStatus,
 		ResponseTimeMs: int(time.Since(start).Milliseconds()),
+		ErrorMessage:   errMsg,
 		CheckedAt:      time.Now(),
 	}
 }
