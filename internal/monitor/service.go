@@ -31,7 +31,12 @@ func (s *MonitorService) CreateTarget(
 		return nil, ErrEmptyName
 	}
 
-	if _, err := url.ParseRequestURI(urlTarget); err != nil {
+	parsed, err := url.ParseRequestURI(urlTarget)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return nil, ErrInvalidURL
+	}
+
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
 		return nil, ErrInvalidURL
 	}
 
@@ -43,7 +48,15 @@ func (s *MonitorService) CreateTarget(
 		return nil, ErrInvalidMethod
 	}
 
-	if expectedStatus == 0 {
+	if intervalSeconds == 0 {
+		intervalSeconds = 60
+	}
+
+	if timeoutSeconds == 0 {
+		timeoutSeconds = 5
+	}
+
+	if expectedStatus < 100 || expectedStatus > 599 {
 		expectedStatus = 200
 	}
 
