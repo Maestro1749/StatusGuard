@@ -6,13 +6,13 @@ import (
 )
 
 type Result struct {
-	ID             int
-	TargetID       int
-	Status         string
-	ResponseTimeMs int
-	HTTPStatus     *int
-	ErrorMessage   *string
-	CheckedAt      time.Time
+	ID             int       `json:"id"`
+	TargetID       int       `json:"target_id"`
+	Status         string    `json:"status"`
+	ResponseTimeMs int       `json:"response_time_ms"`
+	HTTPStatus     *int      `json:"http_status"`
+	ErrorMessage   *string   `json:"error_message"`
+	CheckedAt      time.Time `json:"checked_at"`
 }
 
 var (
