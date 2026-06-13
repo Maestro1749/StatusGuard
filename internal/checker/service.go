@@ -116,3 +116,11 @@ func (s *CheckerService) check(ctx context.Context, target *monitor.Target) Resu
 		CheckedAt:      time.Now(),
 	}
 }
+
+func (s *CheckerService) GetCheckHistory(ctx context.Context, targetID int, limit int) ([]Result, error) {
+	if targetID <= 0 {
+		return nil, ErrInvalidID
+	}
+
+	return s.checkerRepo.GetByTargetID(ctx, targetID, limit)
+}

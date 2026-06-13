@@ -19,7 +19,8 @@ var (
 	StatusUp   = "UP"
 	StatusDown = "DOWN"
 
-	ErrInvalidID      = errors.New("input target id is not vaild")
-	ErrInternalServer = errors.New("internal server error")
-	ErrTimeout        = errors.New("response timeout")
+	ErrInvalidID       = errors.New("input target id is not vaild")
+	ErrInternalServer  = errors.New("internal server error")
+	ErrTimeout         = errors.New("response timeout")
+	ErrResultsNotFound = errors.New("results with this target id not found")
 )
