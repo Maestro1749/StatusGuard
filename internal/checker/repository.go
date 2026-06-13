@@ -16,6 +16,7 @@ type TargetProvider interface {
 
 type CheckerRepository interface {
 	Save(ctx context.Context, result Result) (*Result, error)
+	GetByTargetID(ctx context.Context, targetID int, limit int) ([]Result, error)
 }
 
 type CheckerRepo struct {
@@ -65,4 +66,65 @@ func (r *CheckerRepo) Save(ctx context.Context, result Result) (*Result, error) 
 	}
 
 	return &result, nil
+}
+
+func (r *CheckerRepo) GetByTargetID(ctx context.Context, targetID int, limit int) ([]Result, error) {
+	query := `
+		SELECT id, target_id, status, response_time_ms, status_code, error_message, checked_at
+		FROM check_result
+		WHERE target_id = $1
+		ORDER BY checked_at DESC
+		LIMIT $2;
+	`
+
+	ctxTimeout, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	var results []Result
+	rows, err := r.db.QueryContext(
+		ctxTimeout,
+		query,
+		targetID,
+		limit,
+	)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			r.logger.Warn("database query timed out", zap.Error(err), zap.Duration("timeout_limit", 10*time.Second))
+			return nil, ErrTimeout
+		}
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrResultsNotFound
+		}
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var result Result
+		if err := rows.Scan(
+			&result.ID,
+			&result.TargetID,
+			&result.Status,
+			&result.ResponseTimeMs,
+			&result.HTTPStatus,
+			&result.ErrorMessage,
+			&result.CheckedAt,
+		); err != nil {
+			if errors.Is(err, context.DeadlineExceeded) {
+				r.logger.Warn("database query timed out", zap.Error(err), zap.Duration("timeout_limit", 10*time.Second))
+				return nil, ErrTimeout
+			}
+
+			r.logger.Error("error reading data", zap.Error(err))
+			return nil, ErrInternalServer
+		}
+
+		results = append(results, result)
+
+		if err := rows.Err(); err != nil {
+			r.logger.Error("iteration error", zap.Error(err))
+			return nil, ErrInternalServer
+		}
+	}
+
+	return results, nil
 }

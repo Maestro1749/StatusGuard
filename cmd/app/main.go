@@ -86,6 +86,7 @@ func main() {
 	router.Path("/targets/{id}").Methods("PATCH").HandlerFunc(monitorHandlers.UpdateTarget)
 
 	router.Path("/targets/{id}/check").Methods("POST").HandlerFunc(checkerHandler.CheckTarget)
+	router.Path("/targets/{id}/checks").Methods("GET").HandlerFunc(checkerHandler.GetCheckHistory)
 
 	// graceful shut down
 	srv := &http.Server{
