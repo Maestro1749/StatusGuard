@@ -206,11 +206,10 @@ func (r *MonitorRepo) GetAllTargets(ctx context.Context) ([]Target, error) {
 			return nil, ErrInternalServer
 		}
 		targets = append(targets, target)
-
-		if err := rows.Err(); err != nil {
-			r.logger.Error("iteration error", zap.Error(err))
-			return nil, ErrInternalServer
-		}
+	}
+	if err := rows.Err(); err != nil {
+		r.logger.Error("iteration error", zap.Error(err))
+		return nil, ErrInternalServer
 	}
 
 	return targets, nil
@@ -385,11 +384,10 @@ func (r *MonitorRepo) GetAllActive(ctx context.Context) ([]Target, error) {
 		}
 
 		targets = append(targets, target)
-
-		if err := rows.Err(); err != nil {
-			r.logger.Error("iteration error", zap.Error(err))
-			return nil, ErrInternalServer
-		}
+	}
+	if err := rows.Err(); err != nil {
+		r.logger.Error("iteration error", zap.Error(err))
+		return nil, ErrInternalServer
 	}
 
 	return targets, nil
