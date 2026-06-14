@@ -1,6 +1,9 @@
 package incident
 
-import "time"
+import (
+	"errors"
+	"time"
+)
 
 type Status string
 
@@ -18,3 +21,10 @@ type Incident struct {
 	LastError    *string
 	ChecksFailed int
 }
+
+var (
+	ErrTimeout         = errors.New("response timeout")
+	ErrNotFound        = errors.New("incidents not found")
+	ErrInternalServer  = errors.New("internal server error")
+	ErrInvalidTargetID = errors.New("invalid target id")
+)

@@ -41,6 +41,18 @@ func (s *Service) HandleCheckResult(ctx context.Context, target monitor.Target, 
 	}
 }
 
+func (s *Service) GetOpen(ctx context.Context) ([]Incident, error) {
+	return s.repo.GetOpen(ctx)
+}
+
+func (s *Service) GetAllOpenByTargetID(ctx context.Context, targetID int) ([]Incident, error) {
+	if targetID <= 0 {
+		return nil, ErrInvalidTargetID
+	}
+
+	return s.repo.GetAllOpenByTargetID(ctx, targetID)
+}
+
 func (s *Service) handleDown(ctx context.Context, target monitor.Target, result checker.Result) error {
 	openIncident, err := s.repo.GetOpenByTargetID(ctx, target.ID)
 	if err != nil {

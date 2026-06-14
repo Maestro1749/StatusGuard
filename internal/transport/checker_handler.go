@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gorilla/mux"
 	"go.uber.org/zap"
 )
 
@@ -96,16 +95,4 @@ func (h *CheckerHandler) GetCheckHistory(w http.ResponseWriter, r *http.Request)
 		h.logger.Error("failed to encode results", zap.Error(err))
 		return
 	}
-}
-
-func parseID(r *http.Request) (int, error) {
-	vars := mux.Vars(r)
-
-	idStr := vars["id"]
-	id, err := strconv.Atoi(idStr)
-	if err != nil || id <= 0 {
-		return -1, checker.ErrInvalidID
-	}
-
-	return id, nil
 }

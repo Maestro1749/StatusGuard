@@ -14,6 +14,8 @@ type Repository interface {
 	Create(ctx context.Context, incident Incident) (*Incident, error)
 	IncrementFailure(ctx context.Context, incidentID int, LastError *string) error
 	Resolve(ctx context.Context, incidentID int, resolvedAt time.Time) error
+	GetOpen(ctx context.Context) ([]Incident, error)
+	GetAllOpenByTargetID(ctx context.Context, targetID int) ([]Incident, error)
 }
 
 type Repo struct {
@@ -133,4 +135,118 @@ func (r *Repo) Resolve(
 
 	_, err := r.db.ExecContext(ctx, query, incidentID, resolvedAt)
 	return err
+}
+
+func (r *Repo) GetOpen(ctx context.Context) ([]Incident, error) {
+	query := `
+		SELECT id, target_id, status, started_at, resolved_at, last_error, checks_failed
+		FROM incidents
+		WHERE status = 'open';
+	`
+
+	ctxTimeout, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	var incidents []Incident
+	rows, err := r.db.QueryContext(ctxTimeout, query)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		if errors.Is(err, context.DeadlineExceeded) {
+			r.logger.Warn("database query timed out", zap.Error(err), zap.Duration("timeout_limit", 10*time.Second))
+			return nil, ErrTimeout
+		}
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var incident Incident
+		if err := rows.Scan(
+			&incident.ID,
+			&incident.TargetID,
+			&incident.Status,
+			&incident.StartedAt,
+			&incident.ResolvedAt,
+			&incident.LastError,
+			&incident.ChecksFailed,
+		); err != nil {
+			if errors.Is(err, context.DeadlineExceeded) {
+				r.logger.Warn("database query timed out", zap.Error(err), zap.Duration("timeout_limit", 10*time.Second))
+				return nil, ErrTimeout
+			}
+
+			r.logger.Error("error reading data", zap.Error(err))
+			return nil, ErrInternalServer
+		}
+
+		incidents = append(incidents, incident)
+
+		if err := rows.Err(); err != nil {
+			r.logger.Error("iteration error", zap.Error(err))
+			return nil, ErrInternalServer
+		}
+	}
+
+	return incidents, nil
+}
+
+func (r *Repo) GetAllOpenByTargetID(ctx context.Context, targetID int) ([]Incident, error) {
+	query := `
+		SELECT id, target_id, status, started_at, resolved_at, last_error, checks_failed
+		FROM incidents
+		WHERE target_id = $1 AND status = 'open';
+	`
+
+	ctxTimeout, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	var incidents []Incident
+	rows, err := r.db.QueryContext(
+		ctxTimeout,
+		query,
+		targetID,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		if errors.Is(err, context.DeadlineExceeded) {
+			r.logger.Warn("database query timed out", zap.Error(err), zap.Duration("timeout_limit", 10*time.Second))
+			return nil, ErrTimeout
+		}
+
+		r.logger.Error("failed to execute query", zap.Error(err))
+		return nil, ErrInternalServer
+	}
+
+	for rows.Next() {
+		var incident Incident
+		if err := rows.Scan(
+			&incident.ID,
+			&incident.TargetID,
+			&incident.Status,
+			&incident.StartedAt,
+			&incident.ResolvedAt,
+			&incident.LastError,
+			&incident.ChecksFailed,
+		); err != nil {
+			if errors.Is(err, context.DeadlineExceeded) {
+				r.logger.Warn("database query timed out", zap.Error(err), zap.Duration("timeout_limit", 10*time.Second))
+				return nil, ErrTimeout
+			}
+
+			r.logger.Error("error reading data", zap.Error(err))
+			return nil, ErrInternalServer
+		}
+
+		incidents = append(incidents, incident)
+
+		if err := rows.Err(); err != nil {
+			r.logger.Error("iteration error", zap.Error(err))
+			return nil, ErrInternalServer
+		}
+	}
+
+	return incidents, nil
 }
