@@ -75,6 +75,7 @@ func main() {
 	// handlers
 	monitorHandlers := transport.NewMonitorHandler(logger, monitorService)
 	checkerHandler := transport.NewCheckerHandler(checkerService, logger)
+	incidentHandler := transport.NewIncidentHandler(incidentService, logger)
 
 	router := mux.NewRouter()
 
@@ -87,6 +88,9 @@ func main() {
 
 	router.Path("/targets/{id}/check").Methods("POST").HandlerFunc(checkerHandler.CheckTarget)
 	router.Path("/targets/{id}/checks").Methods("GET").HandlerFunc(checkerHandler.GetCheckHistory)
+
+	router.Path("/incidents/open").Methods("GET").HandlerFunc(incidentHandler.GetOpen)
+	router.Path("/targets/{id}/incidents").Methods("GET").HandlerFunc(incidentHandler.GetAllOpenByTargetID)
 
 	// graceful shut down
 	srv := &http.Server{

@@ -95,6 +95,9 @@ func (r *CheckerRepo) GetByTargetID(ctx context.Context, targetID int, limit int
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, ErrResultsNotFound
 		}
+
+		r.logger.Error("failed to execute query", zap.Error(err))
+		return nil, ErrInternalServer
 	}
 	defer rows.Close()
 
