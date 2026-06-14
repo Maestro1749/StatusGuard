@@ -76,6 +76,7 @@ func main() {
 	monitorHandlers := transport.NewMonitorHandler(logger, monitorService)
 	checkerHandler := transport.NewCheckerHandler(checkerService, logger)
 	incidentHandler := transport.NewIncidentHandler(incidentService, logger)
+	healthHandler := transport.NewHealthHandler(logger)
 
 	router := mux.NewRouter()
 
@@ -91,6 +92,8 @@ func main() {
 
 	router.Path("/incidents/open").Methods("GET").HandlerFunc(incidentHandler.GetOpen)
 	router.Path("/targets/{id}/incidents").Methods("GET").HandlerFunc(incidentHandler.GetAllOpenByTargetID)
+
+	router.Path("/health").Methods("GET").HandlerFunc(healthHandler.Health)
 
 	// graceful shut down
 	srv := &http.Server{
