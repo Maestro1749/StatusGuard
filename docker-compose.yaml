@@ -1,0 +1,53 @@
+services:
+  db:
+    image: postgres:15
+    container_name: statusguard_db
+    restart: always
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    ports:
+      - "${POSTGRES_PORT}:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  
+  migrate:
+    image: migrate/migrate
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./migrations:/migrations
+    command: [
+      "-path", "/migrations",
+      "-database", "${DATABASE_URL}",
+      "up"
+    ]
+
+  app:
+    build: .
+    container_name: statusguard_app
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      - APP_PORT=${APP_PORT}
+      - DATABASE_URL=${DATABASE_URL}
+      - CHECKER_WORKERS=${CHECKER_WORKERS}
+      - SCHEDULER_INTERVAL_SECONDS=${SCHEDULER_INTERVAL_SECONDS}
+    ports:
+      - "${APP_PORT}:${APP_PORT}"
+    volumes:
+      - ./logs:/app/logs
+
+volumes:
+  db_data:
