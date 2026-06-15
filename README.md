@@ -50,7 +50,7 @@ migrations  SQL-миграции базы данных
 
 Основной поток работы выглядит так:
 
-``text
+```text
 HTTP request
     -> transport handler
     -> service
