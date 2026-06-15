@@ -27,7 +27,7 @@ StatusGuard - это backend-сервис для мониторинга дост
 - Go
 - PostgreSQL
 - Docker / Docker compsoe
-- gorrila/mux
+- gorilla/mux
 - golang-migrate
 - zap logger
 
