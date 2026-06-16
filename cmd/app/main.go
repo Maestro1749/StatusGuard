@@ -13,7 +13,6 @@ import (
 	"database/sql"
 	"log"
 	"net/http"
-	"os"
 	"os/signal"
 	"strconv"
 	"syscall"
@@ -67,11 +66,6 @@ func main() {
 		logger,
 	)
 
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
-
-	go scheduler.Start(ctx)
-
 	// handlers
 	monitorHandlers := transport.NewMonitorHandler(logger, monitorService)
 	checkerHandler := transport.NewCheckerHandler(checkerService, logger)
@@ -95,7 +89,7 @@ func main() {
 
 	router.Path("/health").Methods("GET").HandlerFunc(healthHandler.Health)
 
-	// graceful shut down
+	// graceful shutdown
 	srv := &http.Server{
 		Addr:              ":" + strconv.Itoa(cfg.AppPort),
 		Handler:           router,
@@ -112,16 +106,18 @@ func main() {
 		}
 	}()
 
-	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
 
-	<-quit
+	go scheduler.Start(ctx)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	<-ctx.Done()
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if err := srv.Shutdown(ctx); err != nil {
-		logger.Error("server was forced to shutdown")
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		logger.Error("server was forced to shutdown", zap.Error(err))
 		panic(err)
 	}
 }
