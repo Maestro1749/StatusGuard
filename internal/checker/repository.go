@@ -122,11 +122,10 @@ func (r *CheckerRepo) GetByTargetID(ctx context.Context, targetID int, limit int
 		}
 
 		results = append(results, result)
-
-		if err := rows.Err(); err != nil {
-			r.logger.Error("iteration error", zap.Error(err))
-			return nil, ErrInternalServer
-		}
+	}
+	if err := rows.Err(); err != nil {
+		r.logger.Error("iteration error", zap.Error(err))
+		return nil, ErrInternalServer
 	}
 
 	return results, nil
