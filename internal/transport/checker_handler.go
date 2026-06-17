@@ -70,6 +70,7 @@ func (h *CheckerHandler) GetCheckHistory(w http.ResponseWriter, r *http.Request)
 		limit_query, err = strconv.Atoi(query.Get("limit"))
 		if err != nil {
 			http.Error(w, "invalid limit", http.StatusBadRequest)
+			return
 		}
 	} else {
 		limit_query = 20

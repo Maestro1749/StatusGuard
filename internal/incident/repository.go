@@ -150,13 +150,13 @@ func (r *Repo) GetOpen(ctx context.Context) ([]Incident, error) {
 	var incidents []Incident
 	rows, err := r.db.QueryContext(ctxTimeout, query)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrNotFound
-		}
 		if errors.Is(err, context.DeadlineExceeded) {
 			r.logger.Warn("database query timed out", zap.Error(err), zap.Duration("timeout_limit", 10*time.Second))
 			return nil, ErrTimeout
 		}
+
+		r.logger.Error("failed to execute query", zap.Error(err))
+		return nil, ErrInternalServer
 	}
 	defer rows.Close()
 
@@ -181,11 +181,10 @@ func (r *Repo) GetOpen(ctx context.Context) ([]Incident, error) {
 		}
 
 		incidents = append(incidents, incident)
-
-		if err := rows.Err(); err != nil {
-			r.logger.Error("iteration error", zap.Error(err))
-			return nil, ErrInternalServer
-		}
+	}
+	if err := rows.Err(); err != nil {
+		r.logger.Error("iteration error", zap.Error(err))
+		return nil, ErrInternalServer
 	}
 
 	return incidents, nil
@@ -219,6 +218,7 @@ func (r *Repo) GetAllOpenByTargetID(ctx context.Context, targetID int) ([]Incide
 		r.logger.Error("failed to execute query", zap.Error(err))
 		return nil, ErrInternalServer
 	}
+	defer rows.Close()
 
 	for rows.Next() {
 		var incident Incident
@@ -241,11 +241,10 @@ func (r *Repo) GetAllOpenByTargetID(ctx context.Context, targetID int) ([]Incide
 		}
 
 		incidents = append(incidents, incident)
-
-		if err := rows.Err(); err != nil {
-			r.logger.Error("iteration error", zap.Error(err))
-			return nil, ErrInternalServer
-		}
+	}
+	if err := rows.Err(); err != nil {
+		r.logger.Error("iteration error", zap.Error(err))
+		return nil, ErrInternalServer
 	}
 
 	return incidents, nil
