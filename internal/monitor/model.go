@@ -6,16 +6,16 @@ import (
 )
 
 type Target struct {
-	ID              int
-	Name            string
-	URL             string
-	Method          string
-	ExpectedStatus  int
-	IntervalSeconds int
-	TimeoutSeconds  int
-	Enabled         bool
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	ID              int       `json:"id"`
+	Name            string    `json:"name"`
+	URL             string    `json:"url"`
+	Method          string    `json:"method"`
+	ExpectedStatus  int       `json:"expected_status"`
+	IntervalSeconds int       `json:"interval_seconds"`
+	TimeoutSeconds  int       `json:"timeout_seconds"`
+	Enabled         bool      `json:"enabled"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
 }
 
 var (

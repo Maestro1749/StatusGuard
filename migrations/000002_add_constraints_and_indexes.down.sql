@@ -3,7 +3,7 @@ DROP INDEX IF EXISTS idx_incidents_status;
 DROP INDEX IF EXISTS idx_check_result_target_checked_at;
 
 ALTER TABLE incidents
-DROP CONSTRAINT IF EXISTS incidents_checks_failed_check;
+DROP CONSTRAINT IF EXISTS incidents_check_failed_check;
 
 ALTER TABLE check_result
 DROP CONSTRAINT IF EXISTS check_result_status_code_check;
