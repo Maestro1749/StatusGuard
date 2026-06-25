@@ -13,13 +13,13 @@ const (
 )
 
 type Incident struct {
-	ID           int
-	TargetID     int
-	Status       Status
-	StartedAt    time.Time
-	ResolvedAt   *time.Time
-	LastError    *string
-	ChecksFailed int
+	ID           int        `json:"id"`
+	TargetID     int        `json:"target_id"`
+	Status       Status     `json:"status"`
+	StartedAt    time.Time  `json:"started_at"`
+	ResolvedAt   *time.Time `json:"resolved_at"`
+	LastError    *string    `json:"last_error"`
+	ChecksFailed int        `json:"checks_failed"`
 }
 
 var (
