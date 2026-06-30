@@ -2,7 +2,7 @@ services:
   db:
     image: postgres:15
     container_name: statusguard_db
-    restart: always
+    restart: no
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -33,7 +33,7 @@ services:
   app:
     build: .
     container_name: statusguard_app
-    restart: always
+    restart: no
     depends_on:
       db:
         condition: service_healthy
@@ -44,10 +44,14 @@ services:
       - DATABASE_URL=${DATABASE_URL}
       - CHECKER_WORKERS=${CHECKER_WORKERS}
       - SCHEDULER_INTERVAL_SECONDS=${SCHEDULER_INTERVAL_SECONDS}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
     ports:
       - "${APP_PORT}:${APP_PORT}"
     volumes:
       - ./logs:/app/logs
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 volumes:
   db_data:

@@ -50,7 +50,23 @@ func main() {
 	checkerRepo := checker.NewCheckerRepository(db, logger)
 	incidentRepo := incident.NewRepository(db, logger)
 
-	notifier := notification.NewNoopNotifier()
+	// notifier
+	var notifier notification.Notifier = notification.NewNoopNotifier()
+
+	if cfg.TelegramBotToken != "" && cfg.TelegramChatID != "" {
+		telegramNotifier, err := notification.NewTelegramNotifier(
+			cfg.TelegramBotToken,
+			cfg.TelegramChatID,
+		)
+		if err != nil {
+			logger.Error("failed to initialize telegram notifier", zap.Error(err))
+		} else {
+			notifier = telegramNotifier
+			logger.Info("telegram notifier enabled")
+		}
+	} else {
+		logger.Info("telegram notifier disabled, using noop notifier")
+	}
 
 	// services
 	monitorService := monitor.NewMonitorService(monitorRepo, logger)
