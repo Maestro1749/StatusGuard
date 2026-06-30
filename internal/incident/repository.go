@@ -9,15 +9,6 @@ import (
 	"go.uber.org/zap"
 )
 
-type Repository interface {
-	GetOpenByTargetID(ctx context.Context, targetID int) (*Incident, error)
-	Create(ctx context.Context, incident Incident) (*Incident, error)
-	IncrementFailure(ctx context.Context, incidentID int, LastError *string) error
-	Resolve(ctx context.Context, incidentID int, resolvedAt time.Time) error
-	GetOpen(ctx context.Context) ([]Incident, error)
-	GetAllOpenByTargetID(ctx context.Context, targetID int) ([]Incident, error)
-}
-
 type Repo struct {
 	db     *sql.DB
 	logger *zap.Logger
