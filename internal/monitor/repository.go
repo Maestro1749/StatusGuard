@@ -9,16 +9,6 @@ import (
 	"go.uber.org/zap"
 )
 
-type MonitorRepository interface {
-	CreateTarget(ctx context.Context, target Target) (*Target, error)
-	DeleteTarget(ctx context.Context, id int) error
-	GetTarget(ctx context.Context, target Target) (*Target, error)
-	GetAllTargets(ctx context.Context) ([]Target, error)
-	GetByID(ctx context.Context, id int) (*Target, error)
-	UpdateTarget(ctx context.Context, target Target) (*Target, error)
-	GetAllActive(ctx context.Context) ([]Target, error)
-}
-
 type MonitorRepo struct {
 	db     *sql.DB
 	logger *zap.Logger

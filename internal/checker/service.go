@@ -10,6 +10,15 @@ import (
 	"go.uber.org/zap"
 )
 
+type TargetProvider interface {
+	GetByID(ctx context.Context, id int) (*monitor.Target, error)
+}
+
+type CheckerRepository interface {
+	Save(ctx context.Context, result Result) (*Result, error)
+	GetByTargetID(ctx context.Context, targetID int, limit int) ([]Result, error)
+}
+
 type CheckerService struct {
 	targetsProvider TargetProvider
 	checkerRepo     CheckerRepository
