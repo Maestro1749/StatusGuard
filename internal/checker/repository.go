@@ -47,11 +47,21 @@ func (r *CheckerRepo) Save(ctx context.Context, result Result) (*Result, error) 
 		result.ErrorMessage,
 		result.CheckedAt,
 	).Scan(&result.ID); err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			r.logger.Warn("database query timed out", zap.Error(err), zap.Duration("timeout_limit", 5*time.Second))
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(ctxTimeout.Err(), context.DeadlineExceeded) {
+			r.logger.Warn(
+				"database query timed out", zap.Error(err),
+				zap.Int("target_id", result.TargetID),
+				zap.Duration("timeout_limit", 5*time.Second),
+			)
 			return nil, ErrTimeout
 		}
-		r.logger.Error("failed to execute database query")
+
+		r.logger.Error(
+			"failed to execute database query",
+			zap.Error(err),
+			zap.Int("target_id", result.TargetID),
+		)
+
 		return nil, ErrInternalServer
 	}
 
