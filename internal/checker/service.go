@@ -19,40 +19,57 @@ type CheckerRepository interface {
 	GetByTargetID(ctx context.Context, targetID int, limit int) ([]Result, error)
 }
 
+type rateLimiter interface {
+	Allow(ctx context.Context, key string) (bool, time.Duration, error)
+}
+
 type CheckerService struct {
 	targetsProvider TargetProvider
 	checkerRepo     CheckerRepository
+	rateLimiter     rateLimiter
 	client          *http.Client
 	logger          *zap.Logger
 }
 
-func NewCheckerService(targetsProvider TargetProvider, checkerRepo CheckerRepository, logger *zap.Logger) *CheckerService {
+func NewCheckerService(targetsProvider TargetProvider, checkerRepo CheckerRepository, rateLimiter rateLimiter, logger *zap.Logger) *CheckerService {
 	return &CheckerService{
 		targetsProvider: targetsProvider,
 		checkerRepo:     checkerRepo,
+		rateLimiter:     rateLimiter,
 		client:          &http.Client{},
 		logger:          logger,
 	}
 }
 
-func (s *CheckerService) CheckTarget(ctx context.Context, id int) (*Result, error) {
+func (s *CheckerService) CheckManually(ctx context.Context, id int) (*Result, *time.Duration, error) {
 	target, err := s.targetsProvider.GetByID(ctx, id)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	result := s.check(ctx, target)
+	key := fmt.Sprintf("statusguard:maual-check:%d", target.ID)
+
+	allowed, retryAfter, err := s.rateLimiter.Allow(ctx, key)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if !allowed {
+		return nil, &retryAfter, ErrTooManyRequests
+	}
+
+	result := s.executeCheck(ctx, target)
 
 	savedResult, err := s.checkerRepo.Save(ctx, result)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return savedResult, nil
+	return savedResult, nil, nil
 }
 
-func (s *CheckerService) Check(ctx context.Context, target monitor.Target) Result {
-	result := s.check(ctx, &target)
+func (s *CheckerService) CheckScheduled(ctx context.Context, target monitor.Target) Result {
+	result := s.executeCheck(ctx, &target)
 
 	if _, err := s.checkerRepo.Save(ctx, result); err != nil {
 		s.logger.Error("failed to save check result",
@@ -64,7 +81,7 @@ func (s *CheckerService) Check(ctx context.Context, target monitor.Target) Resul
 	return result
 }
 
-func (s *CheckerService) check(ctx context.Context, target *monitor.Target) Result {
+func (s *CheckerService) executeCheck(ctx context.Context, target *monitor.Target) Result {
 	start := time.Now()
 
 	checkCtx, cancel := context.WithTimeout(

@@ -15,7 +15,7 @@ type TargetProvider interface {
 }
 
 type Checker interface {
-	Check(ctx context.Context, target monitor.Target) checker.Result
+	CheckScheduled(ctx context.Context, target monitor.Target) checker.Result
 }
 
 type IncidentService interface {
@@ -122,7 +122,7 @@ func (s *Scheduler) runOnce(ctx context.Context) {
 }
 
 func (s *Scheduler) checkTarget(ctx context.Context, target monitor.Target, workerID int) {
-	result := s.checker.Check(ctx, target)
+	result := s.checker.CheckScheduled(ctx, target)
 
 	if err := s.incident.HandleCheckResult(ctx, target, result); err != nil {
 		s.logger.Error("failed to handle check result",

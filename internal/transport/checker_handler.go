@@ -5,6 +5,7 @@ import (
 	"StatusGuard/internal/monitor"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -35,7 +36,7 @@ func (h *CheckerHandler) CheckTarget(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	result, err := h.service.CheckTarget(r.Context(), id)
+	result, retryAfter, err := h.service.CheckManually(r.Context(), id)
 	if err != nil {
 		switch {
 		case errors.Is(err, monitor.ErrTargetNotFound):
@@ -44,6 +45,8 @@ func (h *CheckerHandler) CheckTarget(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusGatewayTimeout)
 		case errors.Is(err, checker.ErrTimeout):
 			http.Error(w, err.Error(), http.StatusGatewayTimeout)
+		case errors.Is(err, checker.ErrTooManyRequests):
+			http.Error(w, fmt.Sprintf("%s. Try again after %v seconds", err.Error(), retryAfter), http.StatusTooManyRequests)
 		default:
 			http.Error(w, checker.ErrInternalServer.Error(), http.StatusInternalServerError)
 		}

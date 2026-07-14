@@ -18,6 +18,7 @@ tmp/
 
 coverage.out
 *.test
+*_test.go
 
 README.md
 docs/

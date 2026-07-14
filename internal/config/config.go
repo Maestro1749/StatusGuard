@@ -15,6 +15,7 @@ type Config struct {
 	SchedulerIntervalSeconds int
 	AppPort                  int
 	DatabaseURL              string
+	RedisURL                 string
 }
 
 func MustLoad() *Config {
@@ -27,6 +28,7 @@ func MustLoad() *Config {
 		SchedulerIntervalSeconds: getEnvAsInt("SCHEDULER_INTERVAL_SECONDS", 5),
 		AppPort:                  getEnvAsInt("APP_PORT", 8080),
 		DatabaseURL:              getEnvRequired("DATABASE_URL"),
+		RedisURL:                 getEnvRequired("REDIS_URL"),
 	}
 
 	return cfg

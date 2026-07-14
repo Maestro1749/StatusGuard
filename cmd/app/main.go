@@ -7,6 +7,7 @@ import (
 	"StatusGuard/internal/logger"
 	"StatusGuard/internal/monitor"
 	"StatusGuard/internal/notification"
+	"StatusGuard/internal/ratelimit"
 	"StatusGuard/internal/scheduler"
 	"StatusGuard/internal/transport"
 	"context"
@@ -19,6 +20,7 @@ import (
 	"time"
 
 	_ "github.com/lib/pq"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/gorilla/mux"
 	"go.uber.org/zap"
@@ -36,19 +38,30 @@ func main() {
 	// database open
 	db, err := sql.Open("postgres", cfg.DatabaseURL)
 	if err != nil {
-		logger.Error("failed to open database connection", zap.Error(err))
-		panic(err)
+		logger.Fatal("failed to open database connection", zap.Error(err))
 	}
 
 	if err := db.Ping(); err != nil {
-		logger.Error("failed to connect to the database", zap.Error(err))
-		panic(err)
+		logger.Fatal("failed to connect to the database", zap.Error(err))
 	}
 
-	// repositories
+	redisOpts, err := redis.ParseURL(cfg.RedisURL)
+	if err != nil {
+		logger.Fatal("parse redis url failed", zap.Error(err))
+	}
+
+	redisClient := redis.NewClient(redisOpts)
+	defer redisClient.Close()
+
+	if err := redisClient.Ping(context.Background()).Err(); err != nil {
+		logger.Fatal("failed to connect to the redis database", zap.Error(err))
+	}
+
+	// storages
 	monitorRepo := monitor.NewMonitorRepository(db, logger)
 	checkerRepo := checker.NewCheckerRepository(db, logger)
 	incidentRepo := incident.NewRepository(db, logger)
+	redisLimiter := ratelimit.NewRedisLimiter(redisClient, 20*time.Second)
 
 	// notifier
 	var notifier notification.Notifier = notification.NewNoopNotifier()
@@ -70,7 +83,7 @@ func main() {
 
 	// services
 	monitorService := monitor.NewMonitorService(monitorRepo, logger)
-	checkerService := checker.NewCheckerService(monitorRepo, checkerRepo, logger)
+	checkerService := checker.NewCheckerService(monitorRepo, checkerRepo, redisLimiter, logger)
 	incidentService := incident.NewService(incidentRepo, notifier, logger)
 
 	scheduler := scheduler.NewScheduler(

@@ -23,4 +23,6 @@ var (
 	ErrInternalServer  = errors.New("internal server error")
 	ErrTimeout         = errors.New("response timeout")
 	ErrResultsNotFound = errors.New("results with this target id not found")
+
+	ErrTooManyRequests = errors.New("too many requests")
 )
