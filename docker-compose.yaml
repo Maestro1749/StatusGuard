@@ -16,6 +16,17 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    
+  redis:
+    image: redis:7-alpine
+    container_name: statusguard_redis
+    restart: no
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      
   
   migrate:
     image: migrate/migrate
@@ -46,6 +57,7 @@ services:
       - SCHEDULER_INTERVAL_SECONDS=${SCHEDULER_INTERVAL_SECONDS}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - REDIS_URL=${REDIS_URL}
     ports:
       - "${APP_PORT}:${APP_PORT}"
     volumes:
