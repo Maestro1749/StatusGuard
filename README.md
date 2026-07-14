@@ -16,6 +16,7 @@ StatusGuard - это backend-сервис для мониторинга дост
 - Автоматическая фоновая проверка активных сервисов через scheduler.
 - Сохранение истории проверок в PostgreSQL.
 - Создание инцидента при падении сервиса.
+- Уведомления об инцидентах через telegram-бота.
 - Увеличение счётчика неуспешных проверок для уже открытого инцидента.
 - Автоматическое закрытие инцидента при восстановлении сервиса.
 - Health-check endpoint для проверки состояния приложения.
@@ -27,6 +28,7 @@ StatusGuard - это backend-сервис для мониторинга дост
 - Go
 - PostgreSQL
 - Docker / Docker compsoe
+- Redis
 - gorilla/mux
 - golang-migrate
 - zap logger
@@ -45,6 +47,7 @@ internal/checker    выполнение HTTP-проверок и сохране
 internal/scheduler  фоновый запуск проверок
 internal/incident   обработка инцидентов
 internal/notification   уведомления
+internal/ratelimit    ограничитель ручных проверок
 migrations  SQL-миграции базы данных
 ```
 
@@ -95,6 +98,8 @@ POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
 POSTGRES_DB=StatusGuard
 
+REDIS_URL=redis://redis:6379
+
 CHECKER_WORKERS=5
 SCHEDULER_INTERVAL_SECONDS=20
 ```
@@ -139,6 +144,7 @@ curl http://localhost:8080/health
 | `SCHEDULER_INTERVAL_SECONDS` | Интервал запуска scheduler | `20` |
 | `TELEGRAM_BOT_TOKEN` | Токен телеграм-бота для уведомлений | `Ваш токен` |
 | `TELEGRAM_CHAT_ID` | ID чата для уведомлений | `Ваш chat id` |
+| `REDIS_URL` | Строка подключения к Redis | `redis://redis:6379` |
 
 ## API
 
@@ -348,6 +354,17 @@ curl -X PATCH http://localhost:8080/targets/1 \
 
 <img width="739" height="329" alt="image" src="https://github.com/user-attachments/assets/dcd15899-373d-4e64-8f8a-b94332267daa" />
 
+## Redis и rate limiter
+
+Redis используется для ограничения частоты ручных проверок. Для каждого target создается временный ключ с TTL. Пока ключ существует, повторный вызов `POST /targets/{id}/check` отклоняется с кодом 429 `429 Too Many Requests`.
+
+Redis не является источником данных проекта: targets, история проверок и инциленты хранятся в PostgreSQL. Потеря временных rate-limit ключей после перезапуска Redis не влияет на сохраненные данные.
+
+В Docker Compose Redis доступен приложению по имени сервиса `redis`, поэтому внутри контейнера используется адрес:
+
+```env
+REDIS_URL=redis://redis:6379
+```
 
 ## Миграции
 
