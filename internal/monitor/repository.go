@@ -100,51 +100,6 @@ func (r *MonitorRepo) DeleteTarget(ctx context.Context, id int) error {
 	return nil
 }
 
-func (r *MonitorRepo) GetTarget(ctx context.Context, target Target) (*Target, error) {
-	query := `
-		SELECT 
-			name,
-			url,
-			method,
-			expected_status,
-			interval_seconds,
-			timeout_seconds,
-			enabled,
-			created_at,
-			updated_at
-		FROM targets WHERE id = $1;
-	`
-
-	ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	if err := r.db.QueryRowContext(ctxTimeout, query, target.ID).Scan(
-		&target.Name,
-		&target.URL,
-		&target.Method,
-		&target.ExpectedStatus,
-		&target.IntervalSeconds,
-		&target.TimeoutSeconds,
-		&target.Enabled,
-		&target.CreatedAt,
-		&target.UpdatedAt,
-	); err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			r.logger.Warn("database query timed out", zap.Error(err), zap.Duration("timeout_limit", 5*time.Second))
-			return nil, ErrTimeout
-		}
-
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, ErrTargetNotFound
-		}
-
-		r.logger.Error("failed to execute query", zap.Error(err))
-		return nil, ErrInternalServer
-	}
-
-	return &target, nil
-}
-
 func (r *MonitorRepo) GetAllTargets(ctx context.Context) ([]Target, error) {
 	query := `
 		SELECT 

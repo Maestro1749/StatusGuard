@@ -12,7 +12,6 @@ import (
 type MonitorRepository interface {
 	CreateTarget(ctx context.Context, target Target) (*Target, error)
 	DeleteTarget(ctx context.Context, id int) error
-	GetTarget(ctx context.Context, target Target) (*Target, error)
 	GetAllTargets(ctx context.Context) ([]Target, error)
 	GetByID(ctx context.Context, id int) (*Target, error)
 	UpdateTarget(ctx context.Context, target Target) (*Target, error)
@@ -104,11 +103,7 @@ func (s *MonitorService) GetTarget(ctx context.Context, id int) (*Target, error)
 		return nil, ErrInvalidID
 	}
 
-	target := Target{
-		ID: id,
-	}
-
-	return s.repo.GetTarget(ctx, target)
+	return s.repo.GetByID(ctx, id)
 }
 
 func (s *MonitorService) GetAllTargets(ctx context.Context) ([]Target, error) {
