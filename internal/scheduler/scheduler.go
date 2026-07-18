@@ -7,11 +7,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
 type TargetProvider interface {
-	GetAllActive(ctx context.Context) ([]monitor.Target, error)
+	GetTargetsDueForCheck(ctx context.Context, limit int) ([]monitor.Target, error)
+	UpdateNextCheckAt(ctx context.Context, targetID int, nextCheckAt time.Time) error
 }
 
 type Checker interface {
@@ -76,9 +78,9 @@ func (s *Scheduler) Start(ctx context.Context) {
 }
 
 func (s *Scheduler) runOnce(ctx context.Context) {
-	targets, err := s.targetProvider.GetAllActive(ctx)
+	targets, err := s.targetProvider.GetTargetsDueForCheck(ctx, s.workers*10)
 	if err != nil {
-		s.logger.Error("failed to get active targets", zap.Error(err))
+		s.logger.Error("failed to get due targets", zap.Error(err))
 		return
 	}
 
@@ -87,7 +89,13 @@ func (s *Scheduler) runOnce(ctx context.Context) {
 		return
 	}
 
-	s.logger.Info("scheduler check started", zap.Int("targets_count", len(targets)))
+	checkID := uuid.New().String()
+	startTime := time.Now()
+
+	s.logger.Debug("scheduler check started",
+		zap.String("check_id", checkID),
+		zap.Int("targets_count", len(targets)),
+	)
 
 	jobs := make(chan monitor.Target)
 
@@ -118,7 +126,10 @@ func (s *Scheduler) runOnce(ctx context.Context) {
 	close(jobs)
 	wg.Wait()
 
-	s.logger.Info("scheduler check finished")
+	s.logger.Debug("scheduler check finished",
+		zap.String("check_id", checkID),
+		zap.Duration("duration", time.Since(startTime)),
+	)
 }
 
 func (s *Scheduler) checkTarget(ctx context.Context, target monitor.Target, workerID int) {
@@ -130,14 +141,10 @@ func (s *Scheduler) checkTarget(ctx context.Context, target monitor.Target, work
 			zap.Int("target_id", target.ID),
 			zap.Error(err),
 		)
-
-		return
 	}
 
-	s.logger.Debug("target checked",
-		zap.Int("worker_id", workerID),
-		zap.Int("target_id", target.ID),
-		zap.String("status", string(result.Status)),
-		zap.Int("response_time_ms", result.ResponseTimeMs),
-	)
+	nextCheckAt := time.Now().UTC().Add(time.Duration(target.IntervalSeconds) * time.Second)
+	if err := s.targetProvider.UpdateNextCheckAt(ctx, target.ID, nextCheckAt); err != nil {
+		s.logger.Error("failed to update next check time", zap.Int("target_id", target.ID))
+	}
 }
