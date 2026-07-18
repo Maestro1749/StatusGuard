@@ -1,0 +1,1 @@
+CREATE INDEX idx_targets_next_check_at ON targets(enabled, next_check_at ASC);

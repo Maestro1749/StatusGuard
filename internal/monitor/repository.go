@@ -340,21 +340,30 @@ func (r *MonitorRepo) GetAllActive(ctx context.Context) ([]Target, error) {
 
 func (r *MonitorRepo) GetTargetsDueForCheck(ctx context.Context, limit int) ([]Target, error) {
 	query := `
-		SELECT 
-			id,
-			name,
-			url,
-			method,
-			expected_status,
-			interval_seconds,
-			timeout_seconds,
-			enabled,
-			created_at,
-			updated_at,
-			next_check_at
-		FROM targets WHERE enabled = true AND next_check_at <= now()
-		ORDER BY next_check_at ASC
-		LIMIT $1;
+		WITH locked_targets AS (
+			SELECT id
+			FROM targets
+			WHERE enabled = true AND next_check_at <= now()
+			ORDER BY next_check_at ASC
+			LIMIT $1
+			FOR UPDATE SKIP LOCKED
+		)
+		UPDATE targets
+		SET next_check_at = NOW() + INTERVAL '5 minutes'
+		FROM locked_targets
+		WHERE targets.id = locked_targets.id
+		RETURNING
+			targets.id,
+			targets.name,
+			targets.url,
+			targets.method,
+			targets.expected_status,
+			targets.interval_seconds,
+			targets.timeout_seconds,
+			targets.enabled,
+			targets.created_at,
+			targets.updated_at,
+			targets.next_check_at;
 	`
 
 	ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -388,11 +397,6 @@ func (r *MonitorRepo) GetTargetsDueForCheck(ctx context.Context, limit int) ([]T
 			&target.UpdatedAt,
 			&target.NextCheckAt,
 		); err != nil {
-			if errors.Is(err, context.DeadlineExceeded) {
-				r.logger.Warn("database query timed out", zap.Error(err), zap.Duration("timeout_limit", 5*time.Second))
-				return nil, ErrTimeout
-			}
-
 			r.logger.Error("error reading data", zap.Error(err))
 			return nil, ErrInternalServer
 		}
@@ -400,6 +404,10 @@ func (r *MonitorRepo) GetTargetsDueForCheck(ctx context.Context, limit int) ([]T
 		targets = append(targets, target)
 	}
 	if err := rows.Err(); err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			r.logger.Warn("database iteration timed out", zap.Error(err))
+			return nil, ErrTimeout
+		}
 		r.logger.Error("iteration error", zap.Error(err))
 		return nil, ErrInternalServer
 	}

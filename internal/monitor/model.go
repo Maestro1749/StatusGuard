@@ -22,8 +22,8 @@ type Target struct {
 var (
 	ErrEmptyName             = errors.New("target name is empty")
 	ErrInvalidURL            = errors.New("target URL is not valid")
-	ErrInvalidInterval       = errors.New("interval seconds is not valid. Expected value >= 10")
-	ErrInvalidTimeout        = errors.New("timeout seconds is not vaild. Expected value <= 30 and >= 1")
+	ErrInvalidInterval       = errors.New("interval seconds is not valid. Expected value >= 10 and <= 86400 (24 hours)")
+	ErrInvalidTimeout        = errors.New("timeout seconds is not vaild. Expected value <= 30 and >= 1 and timeout must be at least twice the interval")
 	ErrInvalidMethod         = errors.New("target method is not valid")
 	ErrInvalidExpectedStatus = errors.New("expected status is not valid")
 

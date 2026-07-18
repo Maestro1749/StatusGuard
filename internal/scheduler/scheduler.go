@@ -78,9 +78,9 @@ func (s *Scheduler) Start(ctx context.Context) {
 }
 
 func (s *Scheduler) runOnce(ctx context.Context) {
-	targets, err := s.targetProvider.GetTargetsDueForCheck(ctx, s.workers*10)
+	targets, err := s.targetProvider.GetTargetsDueForCheck(ctx, s.workers)
 	if err != nil {
-		s.logger.Error("failed to get due targets", zap.Error(err))
+		s.logger.Error("failed to get and lock due targets", zap.Error(err))
 		return
 	}
 
@@ -97,33 +97,16 @@ func (s *Scheduler) runOnce(ctx context.Context) {
 		zap.Int("targets_count", len(targets)),
 	)
 
-	jobs := make(chan monitor.Target)
-
 	var wg sync.WaitGroup
 
-	for i := 0; i < s.workers; i++ {
-		wg.Add(1)
-
-		go func(workerID int) {
-			defer wg.Done()
-
-			for target := range jobs {
-				s.checkTarget(ctx, target, workerID)
-			}
-		}(i + 1)
-	}
-
 	for _, target := range targets {
-		select {
-		case <-ctx.Done():
-			close(jobs)
-			wg.Wait()
-			return
-		case jobs <- target:
-		}
+		wg.Add(1)
+		go func(t monitor.Target) {
+			defer wg.Done()
+			s.checkTarget(ctx, t)
+		}(target)
 	}
 
-	close(jobs)
 	wg.Wait()
 
 	s.logger.Debug("scheduler check finished",
@@ -132,12 +115,11 @@ func (s *Scheduler) runOnce(ctx context.Context) {
 	)
 }
 
-func (s *Scheduler) checkTarget(ctx context.Context, target monitor.Target, workerID int) {
+func (s *Scheduler) checkTarget(ctx context.Context, target monitor.Target) {
 	result := s.checker.CheckScheduled(ctx, target)
 
 	if err := s.incident.HandleCheckResult(ctx, target, result); err != nil {
 		s.logger.Error("failed to handle check result",
-			zap.Int("worker_id", workerID),
 			zap.Int("target_id", target.ID),
 			zap.Error(err),
 		)
