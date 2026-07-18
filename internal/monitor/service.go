@@ -27,6 +27,14 @@ func NewMonitorService(repo MonitorRepository, logger *zap.Logger) *MonitorServi
 	return &MonitorService{repo: repo, logger: logger}
 }
 
+const (
+	MinCheckInterval = 10
+	MaxCheckInterval = 24 * 60 * 60
+
+	MinCheckTimeout = 1
+	MaxCheckTimeout = 30
+)
+
 func (s *MonitorService) CreateTarget(
 	ctx context.Context,
 	name string,
@@ -69,11 +77,11 @@ func (s *MonitorService) CreateTarget(
 		expectedStatus = 200
 	}
 
-	if intervalSeconds < 10 {
+	if intervalSeconds < MinCheckInterval || intervalSeconds > MaxCheckInterval {
 		return nil, ErrInvalidInterval
 	}
 
-	if timeoutSeconds < 1 || timeoutSeconds > 30 {
+	if timeoutSeconds < MinCheckTimeout || timeoutSeconds > MaxCheckTimeout || timeoutSeconds*2 > intervalSeconds {
 		return nil, ErrInvalidTimeout
 	}
 
@@ -147,14 +155,14 @@ func (s *MonitorService) UpdateTarget(ctx context.Context, input UpdateTargetInp
 	}
 
 	if input.IntervalSeconds != nil {
-		if *input.IntervalSeconds < 10 {
+		if *input.IntervalSeconds < MinCheckInterval || *input.IntervalSeconds > MaxCheckInterval {
 			return nil, ErrInvalidInterval
 		}
 		target.IntervalSeconds = *input.IntervalSeconds
 	}
 
 	if input.TimeoutSeconds != nil {
-		if *input.TimeoutSeconds < 1 || *input.TimeoutSeconds > 30 {
+		if *input.TimeoutSeconds < MinCheckTimeout || *input.TimeoutSeconds > MaxCheckTimeout {
 			return nil, ErrInvalidTimeout
 		}
 		target.TimeoutSeconds = *input.TimeoutSeconds
@@ -162,6 +170,10 @@ func (s *MonitorService) UpdateTarget(ctx context.Context, input UpdateTargetInp
 
 	if input.Enabled != nil {
 		target.Enabled = *input.Enabled
+	}
+
+	if target.TimeoutSeconds*2 > target.IntervalSeconds {
+		return nil, ErrInvalidTimeout
 	}
 
 	return s.repo.UpdateTarget(ctx, *target)
