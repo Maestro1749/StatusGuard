@@ -337,3 +337,99 @@ func (r *MonitorRepo) GetAllActive(ctx context.Context) ([]Target, error) {
 
 	return targets, nil
 }
+
+func (r *MonitorRepo) GetTargetsDueForCheck(ctx context.Context, limit int) ([]Target, error) {
+	query := `
+		SELECT 
+			id,
+			name,
+			url,
+			method,
+			expected_status,
+			interval_seconds,
+			timeout_seconds,
+			enabled,
+			created_at,
+			updated_at,
+			next_check_at
+		FROM targets WHERE enabled = true AND next_check_at <= now()
+		ORDER BY next_check_at ASC
+		LIMIT $1;
+	`
+
+	ctxTimeout, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	var targets []Target
+	rows, err := r.db.QueryContext(ctxTimeout, query, limit)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			r.logger.Warn("database query timed out", zap.Error(err), zap.Duration("timeout_limit", 5*time.Second))
+			return nil, ErrTimeout
+		}
+
+		r.logger.Error("failed to execute database query", zap.Error(err))
+		return nil, ErrInternalServer
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var target Target
+		if err := rows.Scan(
+			&target.ID,
+			&target.Name,
+			&target.URL,
+			&target.Method,
+			&target.ExpectedStatus,
+			&target.IntervalSeconds,
+			&target.TimeoutSeconds,
+			&target.Enabled,
+			&target.CreatedAt,
+			&target.UpdatedAt,
+			&target.NextCheckAt,
+		); err != nil {
+			if errors.Is(err, context.DeadlineExceeded) {
+				r.logger.Warn("database query timed out", zap.Error(err), zap.Duration("timeout_limit", 5*time.Second))
+				return nil, ErrTimeout
+			}
+
+			r.logger.Error("error reading data", zap.Error(err))
+			return nil, ErrInternalServer
+		}
+
+		targets = append(targets, target)
+	}
+	if err := rows.Err(); err != nil {
+		r.logger.Error("iteration error", zap.Error(err))
+		return nil, ErrInternalServer
+	}
+
+	return targets, nil
+}
+
+func (r *MonitorRepo) UpdateNextCheckAt(ctx context.Context, targetID int, nextCheckAt time.Time) error {
+	query := `
+		UPDATE targets SET next_check_at = $1 WHERE id = $2; 
+	`
+
+	ctxTimeout, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+
+	_, err := r.db.ExecContext(
+		ctxTimeout,
+		query,
+		nextCheckAt,
+		targetID,
+	)
+	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			r.logger.Warn("database query timed out", zap.Error(err), zap.Duration("timeout_limit", 5*time.Second))
+			return ErrTimeout
+		}
+
+		r.logger.Error("failed to execute database query", zap.Error(err))
+		return ErrInternalServer
+	}
+
+	return nil
+}
