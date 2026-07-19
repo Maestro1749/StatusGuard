@@ -44,6 +44,7 @@ func main() {
 	if err := db.Ping(); err != nil {
 		logger.Fatal("failed to connect to the database", zap.Error(err))
 	}
+	defer db.Close()
 
 	redisOpts, err := redis.ParseURL(cfg.RedisURL)
 	if err != nil {
