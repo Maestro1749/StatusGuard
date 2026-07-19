@@ -22,3 +22,5 @@ coverage.out
 
 README.md
 docs/
+
+*.out

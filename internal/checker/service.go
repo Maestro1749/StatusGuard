@@ -31,12 +31,12 @@ type CheckerService struct {
 	logger          *zap.Logger
 }
 
-func NewCheckerService(targetsProvider TargetProvider, checkerRepo CheckerRepository, rateLimiter rateLimiter, logger *zap.Logger) *CheckerService {
+func NewCheckerService(targetsProvider TargetProvider, checkerRepo CheckerRepository, rateLimiter rateLimiter, httpClient *http.Client, logger *zap.Logger) *CheckerService {
 	return &CheckerService{
 		targetsProvider: targetsProvider,
 		checkerRepo:     checkerRepo,
 		rateLimiter:     rateLimiter,
-		client:          &http.Client{},
+		client:          httpClient,
 		logger:          logger,
 	}
 }
@@ -47,7 +47,7 @@ func (s *CheckerService) CheckManually(ctx context.Context, id int) (*Result, *t
 		return nil, nil, err
 	}
 
-	key := fmt.Sprintf("statusguard:maual-check:%d", target.ID)
+	key := fmt.Sprintf("statusguard:manual-check:%d", target.ID)
 
 	allowed, retryAfter, err := s.rateLimiter.Allow(ctx, key)
 	if err != nil {

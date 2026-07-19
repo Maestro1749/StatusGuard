@@ -81,9 +81,18 @@ func main() {
 		logger.Info("telegram notifier disabled, using noop notifier")
 	}
 
+	httpClient := &http.Client{
+		Timeout: 10 * time.Second,
+		Transport: &http.Transport{
+			MaxIdleConns:        100,
+			MaxIdleConnsPerHost: 10,
+			IdleConnTimeout:     90 * time.Second,
+		},
+	}
+
 	// services
 	monitorService := monitor.NewMonitorService(monitorRepo, logger)
-	checkerService := checker.NewCheckerService(monitorRepo, checkerRepo, redisLimiter, logger)
+	checkerService := checker.NewCheckerService(monitorRepo, checkerRepo, redisLimiter, httpClient, logger)
 	incidentService := incident.NewService(incidentRepo, notifier, logger)
 
 	scheduler := scheduler.NewScheduler(
