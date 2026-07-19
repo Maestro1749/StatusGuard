@@ -15,7 +15,6 @@ type MonitorRepository interface {
 	GetAllTargets(ctx context.Context) ([]Target, error)
 	GetByID(ctx context.Context, id int) (*Target, error)
 	UpdateTarget(ctx context.Context, target Target) (*Target, error)
-	GetAllActive(ctx context.Context) ([]Target, error)
 }
 
 type MonitorService struct {
@@ -63,14 +62,6 @@ func (s *MonitorService) CreateTarget(
 	method = strings.ToUpper(strings.TrimSpace(method))
 	if method != http.MethodGet {
 		return nil, ErrInvalidMethod
-	}
-
-	if intervalSeconds == 0 {
-		intervalSeconds = 60
-	}
-
-	if timeoutSeconds == 0 {
-		timeoutSeconds = 5
 	}
 
 	if expectedStatus < 100 || expectedStatus > 599 {
