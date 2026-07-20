@@ -88,6 +88,8 @@ func (h *CheckerHandler) GetCheckHistory(w http.ResponseWriter, r *http.Request)
 			http.Error(w, err.Error(), http.StatusGatewayTimeout)
 		case errors.Is(err, checker.ErrInvalidID):
 			http.Error(w, err.Error(), http.StatusBadRequest)
+		case errors.Is(err, checker.ErrInvalidLimit):
+			http.Error(w, err.Error(), http.StatusBadRequest)
 		default:
 			http.Error(w, checker.ErrInternalServer.Error(), http.StatusInternalServerError)
 		}

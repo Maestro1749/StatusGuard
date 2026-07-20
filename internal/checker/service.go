@@ -148,5 +148,9 @@ func (s *CheckerService) GetCheckHistory(ctx context.Context, targetID int, limi
 		return nil, ErrInvalidID
 	}
 
+	if limit < 1 {
+		return nil, ErrInvalidLimit
+	}
+
 	return s.checkerRepo.GetByTargetID(ctx, targetID, limit)
 }
