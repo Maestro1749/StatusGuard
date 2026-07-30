@@ -19,10 +19,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-chi/chi/v5"
 	_ "github.com/lib/pq"
 	"github.com/redis/go-redis/v9"
 
-	"github.com/gorilla/mux"
 	"go.uber.org/zap"
 )
 
@@ -111,22 +111,29 @@ func main() {
 	incidentHandler := transport.NewIncidentHandler(incidentService, logger)
 	healthHandler := transport.NewHealthHandler(logger)
 
-	router := mux.NewRouter()
+	router := chi.NewRouter()
 
 	// routes
-	router.Path("/targets").Methods("POST").HandlerFunc(monitorHandlers.CreateTarget)
-	router.Path("/targets/{id}").Methods("DELETE").HandlerFunc(monitorHandlers.DeleteTarget)
-	router.Path("/targets/{id}").Methods("GET").HandlerFunc(monitorHandlers.GetTarget)
-	router.Path("/targets").Methods("GET").HandlerFunc(monitorHandlers.GetAllTargets)
-	router.Path("/targets/{id}").Methods("PATCH").HandlerFunc(monitorHandlers.UpdateTarget)
+	router.Route("/targets", func(r chi.Router) {
+		r.Post("/", monitorHandlers.CreateTarget)
+		r.Get("/", monitorHandlers.GetAllTargets)
 
-	router.Path("/targets/{id}/check").Methods("POST").HandlerFunc(checkerHandler.CheckTarget)
-	router.Path("/targets/{id}/checks").Methods("GET").HandlerFunc(checkerHandler.GetCheckHistory)
+		r.Route("/{id}", func(r chi.Router) {
+			r.Get("/", monitorHandlers.GetTarget)
+			r.Delete("/", monitorHandlers.DeleteTarget)
+			r.Patch("/", monitorHandlers.UpdateTarget)
 
-	router.Path("/incidents/open").Methods("GET").HandlerFunc(incidentHandler.GetOpen)
-	router.Path("/targets/{id}/incidents").Methods("GET").HandlerFunc(incidentHandler.GetAllOpenByTargetID)
+			r.Post("/check", checkerHandler.CheckTarget)
+			r.Get("/checks", checkerHandler.GetCheckHistory)
+			r.Get("/incidents", incidentHandler.GetAllOpenByTargetID)
+		})
+	})
 
-	router.Path("/health").Methods("GET").HandlerFunc(healthHandler.Health)
+	router.Route("/incidents", func(r chi.Router) {
+		r.Get("/open", incidentHandler.GetOpen)
+	})
+
+	router.Get("/health", healthHandler.Health)
 
 	// graceful shutdown
 	srv := &http.Server{
