@@ -5,13 +5,12 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 )
 
 func parseID(r *http.Request) (int, error) {
-	vars := mux.Vars(r)
+	idStr := chi.URLParam(r, "id")
 
-	idStr := vars["id"]
 	id, err := strconv.Atoi(idStr)
 	if err != nil || id <= 0 {
 		return -1, checker.ErrInvalidID
