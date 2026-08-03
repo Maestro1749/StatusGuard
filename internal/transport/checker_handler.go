@@ -3,25 +3,32 @@ package transport
 import (
 	"StatusGuard/internal/checker"
 	"StatusGuard/internal/monitor"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
+	"time"
 
 	"go.uber.org/zap"
 )
 
 type CheckerHandler struct {
-	service *checker.CheckerService
+	service CheckerService
 	logger  *zap.Logger
 }
 
-func NewCheckerHandler(service *checker.CheckerService, logger *zap.Logger) *CheckerHandler {
+func NewCheckerHandler(service CheckerService, logger *zap.Logger) *CheckerHandler {
 	return &CheckerHandler{
 		service: service,
 		logger:  logger,
 	}
+}
+
+type CheckerService interface {
+	CheckManually(ctx context.Context, id int) (*checker.Result, *time.Duration, error)
+	GetCheckHistory(ctx context.Context, targetID int, limit int) ([]checker.Result, error)
 }
 
 /*
@@ -41,9 +48,7 @@ func (h *CheckerHandler) CheckTarget(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case errors.Is(err, monitor.ErrTargetNotFound):
 			http.Error(w, err.Error(), http.StatusNotFound)
-		case errors.Is(err, monitor.ErrTimeout):
-			http.Error(w, err.Error(), http.StatusGatewayTimeout)
-		case errors.Is(err, checker.ErrTimeout):
+		case errors.Is(err, monitor.ErrTimeout) || errors.Is(err, checker.ErrTimeout):
 			http.Error(w, err.Error(), http.StatusGatewayTimeout)
 		case errors.Is(err, checker.ErrTooManyRequests):
 			http.Error(w, fmt.Sprintf("%s. Try again after %v seconds", err.Error(), retryAfter), http.StatusTooManyRequests)
