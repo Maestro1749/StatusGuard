@@ -11,11 +11,11 @@ import (
 )
 
 type IncidentHandler struct {
-	service *incident.Service
+	service IncidentService
 	logger  *zap.Logger
 }
 
-func NewIncidentHandler(service *incident.Service, logger *zap.Logger) *IncidentHandler {
+func NewIncidentHandler(service IncidentService, logger *zap.Logger) *IncidentHandler {
 	return &IncidentHandler{
 		service: service,
 		logger:  logger,
