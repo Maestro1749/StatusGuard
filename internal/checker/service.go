@@ -19,19 +19,19 @@ type CheckerRepository interface {
 	GetByTargetID(ctx context.Context, targetID int, limit int) ([]Result, error)
 }
 
-type rateLimiter interface {
+type RateLimiter interface {
 	Allow(ctx context.Context, key string) (bool, time.Duration, error)
 }
 
 type CheckerService struct {
 	targetsProvider TargetProvider
 	checkerRepo     CheckerRepository
-	rateLimiter     rateLimiter
+	rateLimiter     RateLimiter
 	client          *http.Client
 	logger          *zap.Logger
 }
 
-func NewCheckerService(targetsProvider TargetProvider, checkerRepo CheckerRepository, rateLimiter rateLimiter, httpClient *http.Client, logger *zap.Logger) *CheckerService {
+func NewCheckerService(targetsProvider TargetProvider, checkerRepo CheckerRepository, rateLimiter RateLimiter, httpClient *http.Client, logger *zap.Logger) *CheckerService {
 	return &CheckerService{
 		targetsProvider: targetsProvider,
 		checkerRepo:     checkerRepo,

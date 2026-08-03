@@ -2,6 +2,7 @@ package transport
 
 import (
 	"StatusGuard/internal/incident"
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -19,6 +20,11 @@ func NewIncidentHandler(service *incident.Service, logger *zap.Logger) *Incident
 		service: service,
 		logger:  logger,
 	}
+}
+
+type IncidentService interface {
+	GetOpen(ctx context.Context) ([]incident.Incident, error)
+	GetAllOpenByTargetID(ctx context.Context, targetID int) ([]incident.Incident, error)
 }
 
 /*

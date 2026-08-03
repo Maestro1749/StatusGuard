@@ -2,6 +2,7 @@ package transport
 
 import (
 	"StatusGuard/internal/monitor"
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -26,14 +27,30 @@ import (
 
 type MonitorHandler struct {
 	logger         *zap.Logger
-	monitorService *monitor.MonitorService
+	monitorService MonitorService
 }
 
-func NewMonitorHandler(logger *zap.Logger, monitorService *monitor.MonitorService) *MonitorHandler {
+func NewMonitorHandler(logger *zap.Logger, monitorService MonitorService) *MonitorHandler {
 	return &MonitorHandler{
 		logger:         logger,
 		monitorService: monitorService,
 	}
+}
+
+type MonitorService interface {
+	CreateTarget(
+		ctx context.Context,
+		name string,
+		urlTarget string,
+		method string,
+		expectedStatus int,
+		intervalSeconds int,
+		timeoutSeconds int,
+	) (*monitor.Target, error)
+	DeleteTarget(ctx context.Context, id int) error
+	GetTarget(ctx context.Context, id int) (*monitor.Target, error)
+	GetAllTargets(ctx context.Context) ([]monitor.Target, error)
+	UpdateTarget(ctx context.Context, input monitor.UpdateTargetInput) (*monitor.Target, error)
 }
 
 func (h *MonitorHandler) CreateTarget(w http.ResponseWriter, r *http.Request) {
