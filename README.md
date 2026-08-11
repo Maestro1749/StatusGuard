@@ -141,7 +141,7 @@ curl http://localhost:8080/health
 | `POSTGRES_PASSWORD` | Пароль PostgreSQL | `postgres` |
 | `POSTGGRES_DB` | Название бызы данных | `StatusGuard` |
 | `CHECKER_WORKERS` | Количество воркеров для фоновых проверок | `5` |
-| `SCHEDULER_INTERVAL_SECONDS` | Интервал запуска scheduler | `20` |
+| `SCHEDULER_INTERVAL_SECONDS` | Интервал запуска scheduler | `2` |
 | `TELEGRAM_BOT_TOKEN` | Токен телеграм-бота для уведомлений | `Ваш токен` |
 | `TELEGRAM_CHAT_ID` | ID чата для уведомлений | `Ваш chat id` |
 | `REDIS_URL` | Строка подключения к Redis | `redis://redis:6379` |
