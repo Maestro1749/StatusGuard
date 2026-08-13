@@ -107,7 +107,7 @@ SCHEDULER_INTERVAL_SECONDS=20
 Запустите проект:
 
 ```bash
-docker compsoe up --build
+docker compose up --build
 ```
 
 После запуска API будет доступно по адресу:
