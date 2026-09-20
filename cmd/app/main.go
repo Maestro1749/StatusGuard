@@ -155,15 +155,31 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	go scheduler.Start(ctx)
+	schedulerDone := make(chan struct{})
+
+	go func() {
+		defer close(schedulerDone)
+		scheduler.Start(ctx)
+	}()
 
 	<-ctx.Done()
 
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	logger.Info("shutdown signal received")
+
+	shutdownCtx, cancel := context.WithTimeout(
+		context.Background(),
+		10*time.Second,
+	)
 	defer cancel()
 
 	if err := srv.Shutdown(shutdownCtx); err != nil {
-		logger.Error("server was forced to shutdown", zap.Error(err))
-		panic(err)
+		logger.Error(
+			"server was forced to shutdown",
+			zap.Error(err),
+		)
 	}
+
+	<-schedulerDone
+
+	logger.Info("application shutdown completed")
 }
